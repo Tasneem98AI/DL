@@ -1,0 +1,39 @@
+import torch
+import torch.nn as nn
+import torchvision.models as models
+
+
+num_classes = 2   # Normal, Pneumonia
+
+model = models.densenet121(pretrained=True)
+
+
+for param in model.parameters():
+    param.requires_grad = False
+
+
+model.classifier = nn.Sequential(
+    nn.Linear(model.classifier.in_features, 256),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+    nn.Linear(256, num_classes)
+)
+
+
+for name, param in model.named_parameters():
+    if "denseblock4" in name or "norm5" in name:
+        param.requires_grad = True
+
+
+optimizer = torch.optim.Adam([
+    {'params': model.features.denseblock4.parameters(), 'lr': 1e-4},
+    {'params': model.features.norm5.parameters(), 'lr': 1e-4},
+    {'params': model.classifier.parameters(), 'lr': 1e-3}
+])
+
+
+criterion = nn.CrossEntropyLoss()
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = model.to(device)
